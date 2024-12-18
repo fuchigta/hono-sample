@@ -26,6 +26,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "backend/*": [
+        "../backend/src/*"
       ]
     }
   },
@@ -35,6 +38,9 @@
   "references": [
     {
       "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "../backend"
     }
   ]
 }

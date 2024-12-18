@@ -10,19 +10,27 @@ import { Card, CardContent, CardFooter } from "./components/ui/card";
 import { Input } from "./components/ui/input";
 import { ScrollArea } from "./components/ui/scroll-area";
 
+import { Api } from "backend/index";
+import { hc } from 'hono/client';
+
+
 const formSchema = z.object({
   message: z.string().min(1, {
     message: "Message must be at least 1 characters.",
   }),
 })
 
-interface Message {
-  role: "asistant" | "user"
-  message: string
+
+interface ChatMessage {
+  role: string
+  content: string
 }
 
+
 function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  const client = hc<Api>('/')
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -32,15 +40,16 @@ function App() {
   })
 
   const onSubmit = useCallback((values: z.infer<typeof formSchema>) => {
-    console.log(values);
-    setMessages(messages => messages.concat([{ role: "user", message: values.message }]));
+    setMessages(messages => messages.concat([{ role: "user", content: values.message }]));
     form.reset();
 
-    setTimeout(async () => {
-      const response = await fetch('/api/hello')
-      const message = await response.json();
-      setMessages(messages => messages.concat([{ role: "asistant", message: message.message }]));
-    }, 2000);
+    client.api.chat.$post({
+      json: { role: "user", content: values.message }
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        setMessages(messages => messages.concat(res.messages));
+      });
   }, [setMessages, form]);
 
   return (
@@ -50,9 +59,9 @@ function App() {
           <ScrollArea className="h-full w-full space-y-4 pr-6 pb-6 m-0">
             {
               messages.map(message => (
-                message.role == "asistant"
-                  ? <div key={message.message} className="mt-2 flex flex-col flex-wrap gap-2 w-max max-w-[75%] min-w-0 break-all px-4 py-2 rounded-lg text-sm bg-muted">{message.message}</div>
-                  : <div key={message.message} className="mt-2 flex flex-col flex-wrap gap-2 w-max max-w-[75%] min-w-0 break-all px-4 py-2 rounded-lg text-sm bg-primary text-primary-foreground ml-auto">{message.message}</div>
+                message.role == "assistant"
+                  ? <div key={message.content} className="mt-2 flex flex-col flex-wrap gap-2 w-max max-w-[75%] min-w-0 break-all px-4 py-2 rounded-lg text-sm bg-muted">{message.content}</div>
+                  : <div key={message.content} className="mt-2 flex flex-col flex-wrap gap-2 w-max max-w-[75%] min-w-0 break-all px-4 py-2 rounded-lg text-sm bg-primary text-primary-foreground ml-auto">{message.content}</div>
               ))
             }
           </ScrollArea>

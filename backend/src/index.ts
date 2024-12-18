@@ -1,8 +1,10 @@
 import { serve } from '@hono/node-server'
+import { zValidator } from '@hono/zod-validator'
+import { config } from 'dotenv'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
-import { config } from 'dotenv'
+import { z } from 'zod'
 
 // 環境変数の読み込み
 config()
@@ -19,26 +21,31 @@ const nodeEnv = process.env.NODE_ENV || 'development'
 app.use('*', logger())
 app.use('/api/*', cors())
 
-// APIルート
-app.get('/api/hello', (c) => {
-  return c.json({
-    message: `Hello from ${appName}!`,
-    environment: nodeEnv,
-    timestamp: new Date().toISOString()
-  })
-})
+const ChatMessage = z.object({
+  role: z.union([
+    z.literal('user'),
+    z.literal('assistant'),
+  ]),
+  content: z.string()
+});
 
-// 環境変数の確認用エンドポイント（開発環境のみ）
-if (nodeEnv === 'development') {
-  app.get('/api/env', (c) => {
+// APIルート
+const routes = app
+  .post("/api/chat", zValidator('json', ChatMessage), (c) => {
+    const req = c.req.valid("json");
+
+    // TODO AzureOpenAIの呼び出し
+
     return c.json({
-      port,
-      host,
-      appName,
-      nodeEnv
-    })
-  })
-}
+      messages: [
+        {
+          role: 'assistant', content: 'Hello!!!'
+        } as z.infer<typeof ChatMessage>
+      ],
+    });
+  });
+
+export type Api = typeof routes;
 
 // サーバーの起動
 console.log(`Starting ${appName} in ${nodeEnv} mode`)
